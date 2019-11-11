@@ -16,6 +16,7 @@ class CPU:
         self.Running_The_CPU = True
         self.ram = [0] * 256
         self.pc = 0
+        self.reg = [0] * len(self.ram)
 
     def load(self):
 
@@ -30,11 +31,11 @@ class CPU:
         program = [
 
             # From print8.ls8
-            # 0b10000010, # LDI R0,8 --- load "immediate", store a value in a register, or "set this register to this value".
-            # 0b00000000,
-            # 0b00001000,
-            # 0b01000111, # PRN R0 --- a pseudo-instruction that prints the numeric value stored in a register.
-            # 0b00000000,
+            0b10000010, # LDI R0,8 --- load "immediate", store a value in a register, or "set this register to this value".
+            0b00000000,
+            0b00001000,
+            0b01000111, # PRN R0 --- a pseudo-instruction that prints the numeric value stored in a register.
+            0b00000000,
             0b00000001, # HLT --- halt the CPU and exit the emulator.
         ]
 
@@ -48,10 +49,12 @@ class CPU:
         """ALU operations."""
 
         print( 'ALU Called' )
+        print( 'reg_a:' , reg_a )
+        print( 'reg_b:' , reg_b )
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        # elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -93,15 +96,35 @@ class CPU:
         """Run the CPU."""
 
         print( 'Running' )
-        print( self.ram[0] )
+        self.trace()
         # ir or ram
         # operand a and operand b
 
         while self.Running_The_CPU:
 
-            command = self.ram[ 0 ]
+            index = self.pc
+            command = self.ram[ index ]
+            print( '\nPC' , self.pc )
 
             if command == 0b00000001:
-                print( 'Halt' )
+                print( 'HLT' )
+                self.Running_The_CPU == False
+                return self.Running_The_CPU
+
+            elif command == 0b00000000:
+                print( 'No operation. Do nothing for this instruction.' )
+                self.pc += 1
+
+            elif command == 0b10000010:
+                print( 'LDI' )
+                # self.alu( 'ADD' , 0 , 1 )
+                self.pc += 3
+                
+            elif command == 0b01000111:
+                print( 'PRN' )
+                self.pc += 1
+            
+            else:
+                print( command )
                 self.Running_The_CPU == False
                 return self.Running_The_CPU
