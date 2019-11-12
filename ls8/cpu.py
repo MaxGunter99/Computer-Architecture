@@ -11,12 +11,17 @@ class CPU:
 
         """Construct a new CPU."""
 
-        print( 'Init Called' )
+        print( '\nInit Called' )
 
         self.Running_The_CPU = True
         self.ram = [0] * 256
         self.pc = 0
-        self.reg = [0] * len(self.ram)
+        self.reg = [0] * 2
+
+        # print( 'Running:' , self.Running_The_CPU )
+        # print( 'Random Access Memory:' , self.ram )
+        # print( 'PC:' , self.pc )
+        # print( 'Registers:' , self.reg )
 
     def load(self):
 
@@ -48,7 +53,7 @@ class CPU:
 
         """ALU operations."""
 
-        print( 'ALU Called' )
+        print( '\nALU Called' )
         print( 'reg_a:' , reg_a )
         print( 'reg_b:' , reg_b )
 
@@ -65,7 +70,7 @@ class CPU:
         from run() if you need help debugging.
         """
 
-        print( 'Trace Called' )
+        print( '\nTrace Called' )
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
@@ -95,33 +100,42 @@ class CPU:
 
         """Run the CPU."""
 
-        print( 'Running' )
-        self.trace()
-        # ir or ram
-        # operand a and operand b
+        print( '\nRunning' )
 
         while self.Running_The_CPU:
 
+            # For Debugging 🕷
+            # self.trace()
+
             index = self.pc
             command = self.ram[ index ]
-            print( '\nPC' , self.pc )
+
+            print( '\nStep:' , self.pc , '⬇︎' )
 
             if command == 0b00000001:
-                print( 'HLT' )
+                print( 'HLT 🛑\n' )
                 self.Running_The_CPU == False
                 return self.Running_The_CPU
 
             elif command == 0b00000000:
-                print( 'No operation. Do nothing for this instruction.' )
+                print( 'NOP' )
+                print( '---> No operation. Do nothing for this instruction. 💤' )
                 self.pc += 1
 
             elif command == 0b10000010:
                 print( 'LDI' )
-                # self.alu( 'ADD' , 0 , 1 )
+                value1 = self.ram[ self.pc + 1 ]
+                self.reg.insert( 0 , value1 )
+                self.reg.pop()
+
+                value2 = self.ram[ self.pc + 2 ]
+                self.reg.insert( 0 , value2 )
+                self.reg.pop()
                 self.pc += 3
-                
+
             elif command == 0b01000111:
                 print( 'PRN' )
+                print( '---> Register[0] value:' , self.reg[0] )
                 self.pc += 1
             
             else:
