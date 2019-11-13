@@ -16,7 +16,7 @@ class CPU:
         self.Running_The_CPU = True
         self.ram = [0] * 256
         self.pc = 0
-        self.reg = [0] * 2
+        self.reg = [0] * 8
 
         # print( 'Running:' , self.Running_The_CPU )
         # print( 'Random Access Memory:' , self.ram )
@@ -26,23 +26,30 @@ class CPU:
     def load(self):
 
         """Load a program into memory."""
-
         print( 'Load Called' )
 
         address = 0
 
-        # For now, we've just hardcoded a program:
+        print( '\ncall' , '\ninterrupts' , '\nkeyboard' , '\nmult' , '\nprint8' , '\nprintstr' , '\nsctest' , '\nstack' , '\nstackoverflow' )
+        what_to_run = input( '\nWhat Do You Want To Run?\n' )
+        f = open( f'./examples/{str( what_to_run )}.ls8' , "r")
+        content = f.readlines()
 
-        program = [
+        program = []
 
-            # From print8.ls8
-            0b10000010, # LDI R0,8 --- load "immediate", store a value in a register, or "set this register to this value".
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0 --- a pseudo-instruction that prints the numeric value stored in a register.
-            0b00000000,
-            0b00000001, # HLT --- halt the CPU and exit the emulator.
-        ]
+        for i in content:
+            
+            if i[0] == '0':
+                line_stating_0 = int(i[:8])
+                program.append( line_stating_0 )
+            elif i[0] == '1':
+                line_stating_1 = int(i[:8])
+                program.append( line_stating_1 )
+
+
+        # f.close()
+
+        print( 'program' , program )
 
         for instruction in program:
             self.ram[address] = instruction
