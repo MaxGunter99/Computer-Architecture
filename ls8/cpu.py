@@ -11,6 +11,23 @@ NOP = 0b00000000
 LDI = 10000010
 PUSH = 1000101
 POP = 1000110
+CALL = 1010000
+ADD = 10100000
+RET = 10001
+
+# Print8 should print -
+# 8
+
+# Stack should print -
+# 2
+# 4
+# 1
+
+# Call should print -
+# 20
+# 30
+# 36
+# 60
 
 class CPU:
     """Main CPU class."""
@@ -27,7 +44,7 @@ class CPU:
         self.reg = [0] * 8
         self.SP = 7
         self.reg[ self.SP ] = 0xf4
-        self.BT = { PRN: self.Print , HLT: self.HLT , MULT: self.MULT , NOP: self.NOP , LDI: self.LDI , PUSH: self.Push , POP: self.POP }
+        self.BT = { PRN: self.Print , HLT: self.HLT , MULT: self.MULT , NOP: self.NOP , LDI: self.LDI , PUSH: self.Push , POP: self.POP , CALL: self.Call  , ADD: self.ADD , RET: self.RET }
 
     def load(self):
 
@@ -60,9 +77,9 @@ class CPU:
 
         """ALU operations."""
 
-        print( '\nALU Called' )
-        print( 'reg_a:' , reg_a )
-        print( 'reg_b:' , reg_b )
+        # print( '\nALU Called' )
+        # print( 'reg_a:' , reg_a )
+        # print( 'reg_b:' , reg_b )
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
@@ -98,11 +115,13 @@ class CPU:
 
     # ram_read() should accept the address to read and return the value stored there.
     def ram_read( self , address ):
+
         # print( 'Ram_Read called' )
         return self.ram[ address ]
 
     # ram_write() should accept a value to write, and the address to write it to.
     def ram_write( self , value , address ):
+
         # print( 'raw_write called' )
         self.ram[ address ] = value
 
@@ -147,6 +166,19 @@ class CPU:
                 self.Running_The_CPU == False
                 return self.Running_The_CPU
 
+    def Call( self , op_a , op_b ):
+
+        # print( 'CALL' )
+        
+        # push return addr on stack
+        return_address = self.pc + 2
+        self.reg[ self.SP ] -= 1  # decrement sp
+        self.ram[ self.reg[ self.SP ] ] = return_address
+
+		# set the pc to the value in the register
+        reg_num = op_a
+        self.pc = self.reg[ reg_num ]
+
     def POP( self , op_a , op_b = None ):
 
         # print( 'POP' )
@@ -181,15 +213,35 @@ class CPU:
         self.pc += 3
 
     def NOP( self , op_a , op_b ):
-        # print( 'do nothing ( NOP )' )
+
+        # print( 'NOP' )
         self.pc += 1
 
+    def ADD( self , op_a , op_b ):
+        # print( 'ADD' )
+        self.alu( 'ADD' , op_a , op_b )
+        self.pc += 3
+
     def MULT( self , op_a , op_b ):
+
         # print( 'MULT' )
         self.alu( 'MUL' , op_a , op_b )
         self.pc += 3
 
+    def RET( self , op_a , op_b ):
+
+        self.pc = self.ram[ self.reg[ self.SP ] ]
+        self.reg[ self.SP ] += 1
+
+    def Print( self , op_a , op_b ):
+
+        # print( 'PRN' )
+        new_val = self.binaryToDecimal( op_a )
+        print( f'{self.reg[ new_val ]} - ( Print Function )' )
+        self.pc += 2
+
     def HLT( self , op_a , op_b ):
+
         # print( '\nHLT 🛑\n' )
         self.Running_The_CPU == False
         carry_on = input( '\nDo you want to do another operation? ( y / n )\n\n' )
@@ -199,19 +251,13 @@ class CPU:
             cpu = CPU()
             cpu.load()
             cpu.run()
+
         elif carry_on.lower() == 'n':
             os.system( 'clear' )
             print( 'Thank you for using the LS8!' )
             exit()
+
         else:
             print( 'Invalid Response' )
             self.HLT( op_a , op_b )
-
-
-    def Print( self , op_a , op_b ):
-
-        # print( 'PRN' )
-        new_val = self.binaryToDecimal( op_a )
-        print( f'{self.reg[ new_val ]} - ( Print Function )' )
-        self.pc += 2
 
