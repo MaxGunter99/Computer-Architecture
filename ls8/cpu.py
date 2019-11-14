@@ -4,6 +4,14 @@ import sys
 import os
 os.system( 'clear' )
 
+PRN = 1000111
+HLT = 0b00000001
+MULT = 10100010
+NOP = 0b00000000
+LDI = 10000010
+PUSH = 1000101
+POP = 1000110
+
 class CPU:
     """Main CPU class."""
 
@@ -18,12 +26,8 @@ class CPU:
         self.pc = 0
         self.reg = [0] * 8
         self.SP = 7
-        self.reg[ self.SP] = 0xf4
-
-        # print( 'Running:' , self.Running_The_CPU )
-        # print( 'Random Access Memory:' , self.ram )
-        # print( 'PC:' , self.pc )
-        # print( 'Registers:' , self.reg )
+        self.reg[ self.SP ] = 0xf4
+        self.BT = { PRN: self.Print , HLT: self.HLT , MULT: self.MULT , NOP: self.NOP , LDI: self.LDI , PUSH: self.Push , POP: self.POP }
 
     def load(self):
 
@@ -34,8 +38,7 @@ class CPU:
 
         print( '\ncall' , '\ninterrupts' , '\nkeyboard' , '\nmult' , '\nprint8' , '\nprintstr' , '\nsctest' , '\nstack' , '\nstackoverflow' )
         what_to_run = input( '\nWhat Do You Want To Run?\n' )
-
-        program = []
+        os.system( 'clear' )
 
         with open( f'./examples/{str( what_to_run )}.ls8' ) as f:
             for line in f:
@@ -50,10 +53,7 @@ class CPU:
                 self.ram[address] = val
                 address += 1
 
-
-        # f.close()
-
-        print( 'program' , program )
+        f.close()
 
     # Arithmetic Logic Unit
     def alu(self, op, reg_a, reg_b):
@@ -98,13 +98,13 @@ class CPU:
 
     # ram_read() should accept the address to read and return the value stored there.
     def ram_read( self , address ):
-        print( 'Ram_Read called' )
+        # print( 'Ram_Read called' )
         return self.ram[ address ]
 
-    # raw_write() should accept a value to write, and the address to write it to.
-    def raw_write( self , value ):
-        print( 'raw_write called' )
-        pass
+    # ram_write() should accept a value to write, and the address to write it to.
+    def ram_write( self , value , address ):
+        # print( 'raw_write called' )
+        self.ram[ address ] = value
 
     def binaryToDecimal( self , binary ): 
       
@@ -129,53 +129,89 @@ class CPU:
 
             # For Debugging 🕷
             # self.trace()
-            print( '\n' )
 
-            index = self.pc
-            command = self.ram[ index ]
+            # print( '\n' )
 
-            if command == 0b00000001:
-                print( 'HLT 🛑\n' )
-                self.Running_The_CPU == False
-                return self.Running_The_CPU
+            command = self.ram[ self.pc ]
 
-            elif command == 0b00000000:
-                print( 'NOP' )
-                print( '---> No operation. 💤' )
-                self.pc += 1
+            op_a = self.ram[ self.pc + 1 ]
+            op_b = self.ram[ self.pc + 2 ]
 
-            elif command == 10000010:
+            if command in self.BT:
+                
+                self.BT[ command ]( op_a , op_b )
 
-                print( 'LDI' )
-                # Register number
-                this_register = self.ram[ self.pc + 1 ]
-
-                # Value to put in that register ( also convert to decimal )
-                original = self.ram[ self.pc + 2 ]
-                value = self.binaryToDecimal( original )
-                # Put Value In Register
-                self.reg[ this_register ] = value
-
-                self.pc += 3
-
-            elif command == 1000111:
-
-                print( 'PRN' )
-                this_register = self.ram[ self.pc + 1 ]
-                print( '---> value:' , self.reg[0] )
-                self.pc += 2
-
-            elif command == 10100010:
-
-                print( 'MULT' )
-                register_one = self.ram[ self.pc + 1 ]
-                register_two = self.ram[ self.pc + 2 ]
-                self.alu( 'MUL' , register_one , register_two )
-
-                self.pc += 3
-            
             else:
+
                 print( f'{command} not set up yet' )
                 self.Running_The_CPU == False
                 return self.Running_The_CPU
+
+    def POP( self , op_a , op_b = None ):
+
+        # print( 'POP' )
+        val = self.ram[ self.reg[ self.SP ] ]
+        reg_num = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+        self.reg[ reg_num ] = val  # copy val from memory at SP into register
+        self.reg[ self.SP ] += 1  # increment SP
+
+        self.pc += 2
+
+    def Push( self , op_a , op_b ):
+
+        # print( 'PUSH' )
+        # push value from register to stack, update stack pointer
+
+        self.reg[ self.SP ] -= 1  # decrement sp
+        reg_num = self.ram[ self.pc + 1]
+        reg_val = self.reg[ reg_num ]
+        self.ram[ self.reg[ self.SP ] ] = reg_val  # copy reg value into memory at address SP
+
+        self.pc += 2
+
+    def LDI( self , op_a , op_b ):
+
+        # print( 'LDI' )
+        value = self.binaryToDecimal( op_b )
+
+        # Put Value In Register
+        self.reg[ op_a ] = value
+        # print( f'Register {op_a} : {value}' )
+
+        self.pc += 3
+
+    def NOP( self , op_a , op_b ):
+        # print( 'do nothing ( NOP )' )
+        self.pc += 1
+
+    def MULT( self , op_a , op_b ):
+        # print( 'MULT' )
+        self.alu( 'MUL' , op_a , op_b )
+        self.pc += 3
+
+    def HLT( self , op_a , op_b ):
+        # print( '\nHLT 🛑\n' )
+        self.Running_The_CPU == False
+        carry_on = input( '\nDo you want to do another operation? ( y / n )\n\n' )
+
+        if carry_on.lower() == 'y':
+            os.system( 'clear' )
+            cpu = CPU()
+            cpu.load()
+            cpu.run()
+        elif carry_on.lower() == 'n':
+            os.system( 'clear' )
+            print( 'Thank you for using the LS8!' )
+            exit()
+        else:
+            print( 'Invalid Response' )
+            self.HLT( op_a , op_b )
+
+
+    def Print( self , op_a , op_b ):
+
+        # print( 'PRN' )
+        new_val = self.binaryToDecimal( op_a )
+        print( f'{self.reg[ new_val ]} - ( Print Function )' )
+        self.pc += 2
 
