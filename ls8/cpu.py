@@ -14,6 +14,10 @@ POP = 1000110
 CALL = 1010000
 ADD = 10100000
 RET = 10001
+CMP = 10100111
+JEQ = 1010101
+JNE = 1010110
+JMP = 1010100
 
 # Print8 should print -
 # 8
@@ -28,6 +32,11 @@ RET = 10001
 # 30
 # 36
 # 60
+
+# sctest should print -
+# 1
+# 4
+# 5
 
 class CPU:
     """Main CPU class."""
@@ -44,7 +53,8 @@ class CPU:
         self.reg = [0] * 8
         self.SP = 7
         self.reg[ self.SP ] = 0xf4
-        self.BT = { PRN: self.Print , HLT: self.HLT , MULT: self.MULT , NOP: self.NOP , LDI: self.LDI , PUSH: self.Push , POP: self.POP , CALL: self.Call  , ADD: self.ADD , RET: self.RET }
+        self.BT = { PRN: self.Print , HLT: self.HLT , MULT: self.MULT , NOP: self.NOP , LDI: self.LDI , PUSH: self.Push , POP: self.POP , CALL: self.Call  , ADD: self.ADD , RET: self.RET , CMP: self.CMP , JEQ: self.JEQ , JNE: self.JNE  , JMP: self.JMP}
+        self.FL = 'N'
 
     def load(self):
 
@@ -54,38 +64,66 @@ class CPU:
         address = 0
 
         print( '\ncall' , '\ninterrupts' , '\nkeyboard' , '\nmult' , '\nprint8' , '\nprintstr' , '\nsctest' , '\nstack' , '\nstackoverflow' )
-        what_to_run = input( '\nWhat Do You Want To Run?\n' )
+        what_to_run = input( '\nWhat Do You Want To Run?\n\n' )
         os.system( 'clear' )
 
-        with open( f'./examples/{str( what_to_run )}.ls8' ) as f:
-            for line in f:
+        try:
+            with open( f'./examples/{str( what_to_run )}.ls8' ) as f:
+                for line in f:
 
-                line = line.split("#")[0]
-                line = line.strip()  # lose whitespace
+                    line = line.split("#")[0]
+                    line = line.strip()  # lose whitespace
 
-                if line == '':
-                    continue
+                    if line == '':
+                        continue
 
-                val = int(line)
-                self.ram[address] = val
-                address += 1
+                    val = int(line)
+                    self.ram[address] = val
+                    address += 1
 
-        f.close()
+            f.close()
+        except:
+            print( '!!! =-=-=-=-= That File Does Not Exist =-=-=-=-= !!!\n' )
+            self.load()
 
     # Arithmetic Logic Unit
     def alu(self, op, reg_a, reg_b):
 
         """ALU operations."""
 
-        # print( '\nALU Called' )
-        # print( 'reg_a:' , reg_a )
-        # print( 'reg_b:' , reg_b )
-
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
 
         elif op == "MUL":
             self.reg[ reg_a ] *= self.reg[ reg_b ]
+
+        elif op == "CMP":
+
+            # * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
+
+            # * If registerA is less than registerB, set the Less-than `L` flag to 1,
+            # otherwise set it to 0.
+
+            # * If registerA is greater than registerB, set the Greater-than `G` flag
+            # to 1, otherwise set it to 0.
+
+            # reg_a = self.reg[reg_a]
+            # reg_b = self.reg[reg_b]
+            # print( self.reg )
+
+            # print( f'Comparing {self.reg[ reg_a ]} to {self.reg[ reg_b ]}' )
+
+            if self.reg[ reg_a ] > self.reg[ reg_b ]:
+                self.FL = 'G'
+                return self.FL
+
+            if self.reg[ reg_a ] == self.reg[ reg_b ]:
+                self.FL = 'E'
+                return self.FL
+                
+            if self.reg[ reg_a ] < self.reg[ reg_b ]:
+                self.FL = 'L'
+                return self.FL
 
         else:
             raise Exception("Unsupported ALU operation")
@@ -126,8 +164,7 @@ class CPU:
         self.ram[ address ] = value
 
     def binaryToDecimal( self , binary ): 
-      
-        binary1 = binary 
+    
         decimal, i, n = 0, 0, 0
         while(binary != 0): 
             dec = binary % 10
@@ -149,8 +186,6 @@ class CPU:
             # For Debugging 🕷
             # self.trace()
 
-            # print( '\n' )
-
             command = self.ram[ self.pc ]
 
             op_a = self.ram[ self.pc + 1 ]
@@ -166,10 +201,54 @@ class CPU:
                 self.Running_The_CPU == False
                 return self.Running_The_CPU
 
+    def JMP( self , op_a , op_b ):
+
+        # print( 'JMP' )
+        jump_to = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+        self.pc = self.reg[ jump_to ]
+
+    def JNE( self , op_a , op_b ):
+
+        # If `E` flag is clear (false, 0), jump to the address stored in the given register.
+        # print( 'JNE' , op_a , op_b )
+
+        if self.FL == 'E':
+            self.pc += 2
+
+        else:
+
+            jump_to = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+            self.pc = self.reg[ jump_to ]
+
+    def JEQ( self , op_a , op_b ):
+
+        # If `equal` flag is set (true), jump to the address stored in the given register.
+        # print( 'JEQ' )
+
+        if self.FL == 'G':
+            # print( 'Greater' )
+            self.pc += 2
+
+        elif self.FL == 'L':
+            # print( 'Less' )
+            self.pc += 2
+            
+        elif self.FL == 'E':
+
+            jump_to = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+            self.pc = self.reg[ jump_to ]
+
+        # exit()
+
+    def CMP( self , op_a , op_b ):
+
+        # print( 'CMP' )
+        self.alu( 'CMP' , op_a , op_b )
+        self.pc += 3
+
     def Call( self , op_a , op_b ):
 
         # print( 'CALL' )
-        
         # push return addr on stack
         return_address = self.pc + 2
         self.reg[ self.SP ] -= 1  # decrement sp
@@ -204,11 +283,18 @@ class CPU:
     def LDI( self , op_a , op_b ):
 
         # print( 'LDI' )
-        value = self.binaryToDecimal( op_b )
+
+        value = self.binaryToDecimal( int( f'000{op_b}' ) )
+        register_index = self.binaryToDecimal( op_a )
+
+        # if register is too small, expand
+        if register_index > len( self.reg ):
+            for i in range( value - len( self.reg ) ):
+                self.reg.insert( len( self.reg ) - 2 , 0 )
 
         # Put Value In Register
-        self.reg[ op_a ] = value
-        # print( f'Register {op_a} : {value}' )
+        self.reg[ register_index ] = value
+        # print( f'Register {register_index} : {value}' )
 
         self.pc += 3
 
@@ -239,6 +325,7 @@ class CPU:
         new_val = self.binaryToDecimal( op_a )
         print( f'{self.reg[ new_val ]} - ( Print Function )' )
         self.pc += 2
+        # exit()
 
     def HLT( self , op_a , op_b ):
 
@@ -258,6 +345,7 @@ class CPU:
             exit()
 
         else:
-            print( 'Invalid Response' )
+            os.system( 'clear' )
+            print( '!!! =-=-=-=-= Invalid Response =-=-=-=-= !!!' )
             self.HLT( op_a , op_b )
 
