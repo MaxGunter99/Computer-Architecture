@@ -1,50 +1,141 @@
 """CPU functionality."""
 
 import sys
+import os
+os.system( 'clear' )
+
+PRN = 1000111
+HLT = 0b00000001
+MULT = 10100010
+NOP = 0b00000000
+LDI = 10000010
+PUSH = 1000101
+POP = 1000110
+CALL = 1010000
+ADD = 10100000
+RET = 10001
+CMP = 10100111
+JEQ = 1010101
+JNE = 1010110
+JMP = 1010100
+
+# Print8 should print -
+# 8
+
+# Stack should print -
+# 2
+# 4
+# 1
+
+# Call should print -
+# 20
+# 30
+# 36
+# 60
+
+# sctest should print -
+# 1
+# 4
+# 5
 
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
+
         """Construct a new CPU."""
-        pass
+
+        print( '\nInit Called' )
+
+        self.Running_The_CPU = True
+        self.ram = [0] * 256
+        self.pc = 0
+        self.reg = [0] * 8
+        self.SP = 7
+        self.reg[ self.SP ] = 0xf4
+        self.BT = { PRN: self.Print , HLT: self.HLT , MULT: self.MULT , NOP: self.NOP , LDI: self.LDI , PUSH: self.Push , POP: self.POP , CALL: self.Call  , ADD: self.ADD , RET: self.RET , CMP: self.CMP , JEQ: self.JEQ , JNE: self.JNE  , JMP: self.JMP}
+        self.FL = 'N'
 
     def load(self):
+
         """Load a program into memory."""
+        print( 'Load Called' )
 
         address = 0
 
-        # For now, we've just hardcoded a program:
+        print( '\ncall' , '\ninterrupts' , '\nkeyboard' , '\nmult' , '\nprint8' , '\nprintstr' , '\nsctest' , '\nstack' , '\nstackoverflow' )
+        what_to_run = input( '\nWhat Do You Want To Run?\n\n' )
+        os.system( 'clear' )
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        try:
+            with open( f'./examples/{str( what_to_run )}.ls8' ) as f:
+                for line in f:
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+                    line = line.split("#")[0]
+                    line = line.strip()  # lose whitespace
 
+                    if line == '':
+                        continue
 
+                    val = int(line)
+                    self.ram[address] = val
+                    address += 1
+
+            f.close()
+        except:
+            print( '!!! =-=-=-=-= That File Does Not Exist =-=-=-=-= !!!\n' )
+            self.load()
+
+    # Arithmetic Logic Unit
     def alu(self, op, reg_a, reg_b):
+
         """ALU operations."""
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+
+        elif op == "MUL":
+            self.reg[ reg_a ] *= self.reg[ reg_b ]
+
+        elif op == "CMP":
+
+            # * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
+
+            # * If registerA is less than registerB, set the Less-than `L` flag to 1,
+            # otherwise set it to 0.
+
+            # * If registerA is greater than registerB, set the Greater-than `G` flag
+            # to 1, otherwise set it to 0.
+
+            # reg_a = self.reg[reg_a]
+            # reg_b = self.reg[reg_b]
+            # print( self.reg )
+
+            # print( f'Comparing {self.reg[ reg_a ]} to {self.reg[ reg_b ]}' )
+
+            if self.reg[ reg_a ] > self.reg[ reg_b ]:
+                self.FL = 'G'
+                return self.FL
+
+            if self.reg[ reg_a ] == self.reg[ reg_b ]:
+                self.FL = 'E'
+                return self.FL
+                
+            if self.reg[ reg_a ] < self.reg[ reg_b ]:
+                self.FL = 'L'
+                return self.FL
+
         else:
             raise Exception("Unsupported ALU operation")
 
     def trace(self):
+
         """
         Handy function to print out the CPU state. You might want to call this
         from run() if you need help debugging.
         """
+
+        print( '\nTrace Called' )
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
@@ -60,6 +151,201 @@ class CPU:
 
         print()
 
+    # ram_read() should accept the address to read and return the value stored there.
+    def ram_read( self , address ):
+
+        # print( 'Ram_Read called' )
+        return self.ram[ address ]
+
+    # ram_write() should accept a value to write, and the address to write it to.
+    def ram_write( self , value , address ):
+
+        # print( 'raw_write called' )
+        self.ram[ address ] = value
+
+    def binaryToDecimal( self , binary ): 
+    
+        decimal, i, n = 0, 0, 0
+        while(binary != 0): 
+            dec = binary % 10
+            decimal = decimal + dec * pow(2, i) 
+            binary = binary//10
+            i += 1
+        return decimal
+
     def run(self):
+
         """Run the CPU."""
-        pass
+
+        print( '\nRunning' )
+
+        print( self.ram  , '\n' )
+
+        while self.Running_The_CPU:
+
+            # For Debugging 🕷
+            # self.trace()
+
+            command = self.ram[ self.pc ]
+
+            op_a = self.ram[ self.pc + 1 ]
+            op_b = self.ram[ self.pc + 2 ]
+
+            if command in self.BT:
+                
+                self.BT[ command ]( op_a , op_b )
+
+            else:
+
+                print( f'{command} not set up yet' )
+                self.Running_The_CPU == False
+                return self.Running_The_CPU
+
+    def JMP( self , op_a , op_b ):
+
+        # print( 'JMP' )
+        jump_to = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+        self.pc = self.reg[ jump_to ]
+
+    def JNE( self , op_a , op_b ):
+
+        # If `E` flag is clear (false, 0), jump to the address stored in the given register.
+        # print( 'JNE' , op_a , op_b )
+
+        if self.FL == 'E':
+            self.pc += 2
+
+        else:
+
+            jump_to = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+            self.pc = self.reg[ jump_to ]
+
+    def JEQ( self , op_a , op_b ):
+
+        # If `equal` flag is set (true), jump to the address stored in the given register.
+        # print( 'JEQ' )
+
+        if self.FL == 'G':
+            # print( 'Greater' )
+            self.pc += 2
+
+        elif self.FL == 'L':
+            # print( 'Less' )
+            self.pc += 2
+            
+        elif self.FL == 'E':
+
+            jump_to = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+            self.pc = self.reg[ jump_to ]
+
+        # exit()
+
+    def CMP( self , op_a , op_b ):
+
+        # print( 'CMP' )
+        self.alu( 'CMP' , op_a , op_b )
+        self.pc += 3
+
+    def Call( self , op_a , op_b ):
+
+        # print( 'CALL' )
+        # push return addr on stack
+        return_address = self.pc + 2
+        self.reg[ self.SP ] -= 1  # decrement sp
+        self.ram[ self.reg[ self.SP ] ] = return_address
+
+		# set the pc to the value in the register
+        reg_num = op_a
+        self.pc = self.reg[ reg_num ]
+
+    def POP( self , op_a , op_b = None ):
+
+        # print( 'POP' )
+        val = self.ram[ self.reg[ self.SP ] ]
+        reg_num = self.binaryToDecimal( self.ram[ self.pc + 1 ] )
+        self.reg[ reg_num ] = val  # copy val from memory at SP into register
+        self.reg[ self.SP ] += 1  # increment SP
+
+        self.pc += 2
+
+    def Push( self , op_a , op_b ):
+
+        # print( 'PUSH' )
+        # push value from register to stack, update stack pointer
+
+        self.reg[ self.SP ] -= 1  # decrement sp
+        reg_num = self.ram[ self.pc + 1]
+        reg_val = self.reg[ reg_num ]
+        self.ram[ self.reg[ self.SP ] ] = reg_val  # copy reg value into memory at address SP
+
+        self.pc += 2
+
+    def LDI( self , op_a , op_b ):
+
+        # print( 'LDI' )
+
+        value = self.binaryToDecimal( int( f'000{op_b}' ) )
+        register_index = self.binaryToDecimal( op_a )
+
+        # if register is too small, expand
+        if register_index > len( self.reg ):
+            for i in range( value - len( self.reg ) ):
+                self.reg.insert( len( self.reg ) - 2 , 0 )
+
+        # Put Value In Register
+        self.reg[ register_index ] = value
+        # print( f'Register {register_index} : {value}' )
+
+        self.pc += 3
+
+    def NOP( self , op_a , op_b ):
+
+        # print( 'NOP' )
+        self.pc += 1
+
+    def ADD( self , op_a , op_b ):
+        # print( 'ADD' )
+        self.alu( 'ADD' , op_a , op_b )
+        self.pc += 3
+
+    def MULT( self , op_a , op_b ):
+
+        # print( 'MULT' )
+        self.alu( 'MUL' , op_a , op_b )
+        self.pc += 3
+
+    def RET( self , op_a , op_b ):
+
+        self.pc = self.ram[ self.reg[ self.SP ] ]
+        self.reg[ self.SP ] += 1
+
+    def Print( self , op_a , op_b ):
+
+        # print( 'PRN' )
+        new_val = self.binaryToDecimal( op_a )
+        print( f'{self.reg[ new_val ]} - ( Print Function )' )
+        self.pc += 2
+        # exit()
+
+    def HLT( self , op_a , op_b ):
+
+        # print( '\nHLT 🛑\n' )
+        self.Running_The_CPU == False
+        carry_on = input( '\nDo you want to do another operation? ( y / n )\n\n' )
+
+        if carry_on.lower() == 'y':
+            os.system( 'clear' )
+            cpu = CPU()
+            cpu.load()
+            cpu.run()
+
+        elif carry_on.lower() == 'n':
+            os.system( 'clear' )
+            print( 'Thank you for using the LS8!' )
+            exit()
+
+        else:
+            os.system( 'clear' )
+            print( '!!! =-=-=-=-= Invalid Response =-=-=-=-= !!!' )
+            self.HLT( op_a , op_b )
+
